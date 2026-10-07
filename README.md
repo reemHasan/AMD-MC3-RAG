@@ -1,4 +1,4 @@
-# AMD MC-3: Retrieval-Augmented Generation over a mixed-document corpus
+# MC-3: Retrieval-Augmented Generation over a mixed-document corpus
 
 A Docker submission for AMD Mini-Challenge 3. It takes a folder of mixed documents
 (PDF, Word, Excel, CSV, text, logs, Python source, PNG/JPG), indexes it once, and then
@@ -307,8 +307,9 @@ pip install -r app/requirements.txt
 pip install --no-deps -U transformers tokenizers safetensors huggingface_hub
 python -c "import torch; print(torch.__version__)"      # must still contain 'rocm'
 
-# 3. Download the weights first (~16 GB)
-huggingface-cli download Qwen/Qwen2.5-VL-7B-Instruct --local-dir ./models/vlm
+# 3. Download the weights first (~16 GB). Do NOT have HF_HUB_OFFLINE=1 set yet.
+#    (newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
+python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 
 # 4. Point the project at local paths
 export MC3_MODEL_DIR=$PWD/models/vlm MC3_INDEX_DIR=$PWD/work/index \
@@ -332,7 +333,7 @@ watch -n1 'amd-smi metric --mem | grep USED_VRAM'
 ### 7.2 As the Docker submission
 
 ```bash
-huggingface-cli download Qwen/Qwen2.5-VL-7B-Instruct --local-dir models/vlm
+python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 docker build -t mc3:v1 .
 docker run --rm mc3:v1 python3 -c "import torch; print(torch.__version__)"   # +rocm
 python3 selfcheck.py mc3:v1 ./sample-corpus

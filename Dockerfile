@@ -7,10 +7,10 @@ COPY app/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && pip install --no-cache-dir --no-deps -U transformers tokenizers safetensors huggingface_hub \
  && python3 -c "import torch, torchvision; print(torch.__version__, torchvision.__version__); assert 'rocm' in torch.__version__, 'pip replaced ROCm torch!'" \
- && python3 -c "import transformers; print('transformers', transformers.__version__)"
+ && python3 -c "import transformers, huggingface_hub; from transformers import AutoProcessor, AutoModelForImageTextToText; print('transformers', transformers.__version__, 'hub', huggingface_hub.__version__)"
 
 # Weights are shipped IN the image (no network at evaluation time).
-#   huggingface-cli download Qwen/Qwen2.5-VL-7B-Instruct --local-dir models/vlm
+#   python3 -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 COPY models/ /models/
 ENV MC3_MODEL_DIR=/models/vlm \
     HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \

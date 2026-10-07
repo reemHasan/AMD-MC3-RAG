@@ -12,5 +12,10 @@ tqdm
 filelock
 fsspec
 jinja2
+# needed by huggingface_hub (installed --no-deps below); none of these depend on torch
+httpx2
+click
+typing-extensions
+hf-xet
 # transformers, tokenizers, safetensors and huggingface_hub are installed in the
 # Dockerfile with --no-deps, for the same reason.
