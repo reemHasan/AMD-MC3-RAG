@@ -1,0 +1,16 @@
+# Installed with plain `pip install -r`. NOTHING here may depend on torch: pip would
+# resolve that dependency by replacing the ROCm build with a CUDA build (see Dockerfile).
+pypdf>=4.0
+openpyxl>=3.1
+pypdfium2>=4.30        # only used to render scanned PDF pages for the vision model
+numpy
+packaging
+pyyaml
+regex
+requests
+tqdm
+filelock
+fsspec
+jinja2
+# transformers, tokenizers, safetensors and huggingface_hub are installed in the
+# Dockerfile with --no-deps, for the same reason.
