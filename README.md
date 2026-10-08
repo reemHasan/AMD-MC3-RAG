@@ -308,7 +308,7 @@ pip install --no-deps -U transformers tokenizers safetensors huggingface_hub
 python -c "import torch; print(torch.__version__)"      # must still contain 'rocm'
 
 # 3. Download the weights first (~16 GB). Do NOT have HF_HUB_OFFLINE=1 set yet.
-#    (newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
+#(newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
 python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 
 # 4. Point the project at local paths
