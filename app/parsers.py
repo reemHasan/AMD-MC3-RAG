@@ -7,6 +7,7 @@ A chunk is {"text": str, "loc": str}. The indexer adds file / kind / status.
 """
 from __future__ import annotations
 
+import codecs
 import csv
 import io
 import re
@@ -60,6 +61,25 @@ def chunk_lines(lines: list[str], max_chars: int = MAX_CHARS, overlap: int = 3):
     return out
 
 
+def decode_text(data: bytes) -> str:
+    """Bytes -> text. Handles UTF-8 (+BOM) and UTF-16/32 (what Windows tools write: every other
+    byte is NUL, which a naive 'contains NUL = binary' test mistakes for a binary file)."""
+    for bom, enc in ((codecs.BOM_UTF32_LE, "utf-32"), (codecs.BOM_UTF32_BE, "utf-32"),
+                     (codecs.BOM_UTF16_LE, "utf-16"), (codecs.BOM_UTF16_BE, "utf-16")):
+        if data.startswith(bom):
+            return data.decode(enc, errors="replace")
+    head = data[:8192]
+    if b"\x00" in head:
+        n = len(head) // 2
+        even0, odd0 = head[0::2].count(0), head[1::2].count(0)
+        if n and odd0 > 0.3 * n and even0 < 0.05 * n:      # UTF-16-LE without a BOM
+            return data.decode("utf-16-le", errors="replace")
+        if n and even0 > 0.3 * n and odd0 < 0.05 * n:      # UTF-16-BE without a BOM
+            return data.decode("utf-16-be", errors="replace")
+        raise ValueError("binary file")
+    return data.decode("utf-8-sig", errors="replace")
+
+
 def read_text(path: Path) -> str:
     """
     Reads a file as text. If the first 8 KB contains a NUL byte, the file is binary and it raises an error.
@@ -67,9 +87,7 @@ def read_text(path: Path) -> str:
     """
     with open(path, "rb") as f:
         data = f.read(50_000_000)
-    if b"\x00" in data[:8192]:
-        raise ValueError("binary file")
-    return data.decode("utf-8-sig", errors="replace")
+    return decode_text(data)
 
 
 def _cell(v) -> str:
@@ -87,6 +105,7 @@ def _cell(v) -> str:
 
 
 def table_chunks(sheet: str, rows) -> list[dict]:
+    """Rows -> chunks of 'column: value' lines, each chunk repeating the header."""
     """Rows -> chunks of 'column: value' lines, each chunk repeating the header."""
     """
     Shared by CSV and XLSX. The first row is the header if it has at least 2 filled cells, otherwise columns are named col1, col2... Each row becomes [sheet] row 5: Part number: X; Product: TQ-40. Rows are grouped, at most 8 per chunk,
@@ -148,10 +167,11 @@ def parse_csv(path: Path) -> list[dict]:
 
 
 def parse_xlsx(path: Path) -> list[dict]:
-    from openpyxl import load_workbook
     """
     Opens with openpyxl in read-only mode, using cached formula values. It reads every sheet, including hidden ones, with table_chunks.
     """
+    from openpyxl import load_workbook
+
     wb = load_workbook(str(path), read_only=True, data_only=True)  # every sheet, hidden too
     out = []
     try:
@@ -210,12 +230,11 @@ def parse_docx(path: Path) -> list[dict]:
 
 
 def parse_pdf(path: Path, describe_image=None) -> list[dict]:
+    from pypdf import PdfReader
     """
     	Uses pypdf. An encrypted PDF raises an error, even if a blank password would open it. It extracts text page by page, with location p.N. If a PDF has almost no text (a scan),
         it renders up to 8 pages with pypdfium2 and asks the vision model to transcribe them.
     """
-    from pypdf import PdfReader
-
     reader = PdfReader(str(path), strict=False)
     if reader.is_encrypted:
         # Even with a blank user password: nothing inside an encrypted file is a source.
@@ -246,11 +265,10 @@ def parse_pdf(path: Path, describe_image=None) -> list[dict]:
 
 
 def load_image(path: Path):
+    from PIL import Image, ImageOps
     """
     Opens an image with PIL, applies its rotation metadata, and converts it to RGB.
     """
-    from PIL import Image, ImageOps
-
     img = Image.open(path)
     img.load()
     img = ImageOps.exif_transpose(img).convert("RGB")
@@ -320,11 +338,10 @@ _STATUS_BANNER = re.compile(
 
 
 def file_status(rel: str, first_text: str) -> str:
-    """
-    Returns "withdrawn" if the filename contains withdrawn, superseded or obsolete, or if the first 600 characters
-    carry a banner such as "THIS DATASHEET IS WITHDRAWN". Otherwise "current". It does not search the whole body,
-    so a current file that says "this supersedes the withdrawn r1" isn't flagged by mistake.
-    """
+    """'withdrawn' for files that announce themselves as superseded, else 'current'.
+
+    Deliberately NOT a bare keyword search of the body: a current r2 datasheet that says
+    "this revision supersedes the withdrawn r1" must not be flagged."""
     if _STATUS_NAME.search(rel) or _STATUS_BANNER.search(first_text[:600]):
         return "withdrawn"
     return "current"

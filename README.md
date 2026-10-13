@@ -303,35 +303,49 @@ in `parsers.py`; `k1`, `b` and the withdrawn multiplier in `retrieval.py`.
 Use a **Terminal** for the long-running parts.
 
 ```bash
-# 1. Confirm the ROCm build and the GPU
+# 1. In the folder of the project, execute the bash file to Creates the empty directory mc3-corpus/archive/. And sets mc3-corpus/vendor/internal_audit.txt to mode 000 (no permissions).
+sh setup.sh 
+# 2. Confirm the ROCm build and the GPU
 python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.is_available())"
 
-# 2. Install dependencies WITHOUT touching torch
+# 3. Install dependencies WITHOUT touching torch
 pip install -r app/requirements.txt
 pip install --no-deps -U transformers tokenizers safetensors huggingface_hub
 python -c "import torch; print(torch.__version__)"      # must still contain 'rocm'
 
-# 3. Download the weights first (~16 GB). Do NOT have HF_HUB_OFFLINE=1 set yet.
-#    (newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
+# 4. Download the weights first (~16 GB). Do NOT have HF_HUB_OFFLINE=1 set yet.
+#(newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
 python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 
-# 4. Point the project at local paths
+# 5. Point the project at local paths
 export MC3_MODEL_DIR=$PWD/models/vlm MC3_INDEX_DIR=$PWD/work/index \
        MC2_OUTPUT_DIR=$PWD/work/output MC3_SOCK=/tmp/mc3_rag.sock HF_HUB_OFFLINE=1
 mkdir -p work
 
-# 5. Start the server and wait for "ready: ... (model load took Ns)"
+# 6. Start the server and wait for "ready: ... (model load took Ns)"
 nohup python app/server.py > work/server.log 2>&1 &
 tail -f work/server.log
 
-# 6. Index, then ask
-time python app/app.py --index ./sample-corpus
-time python app/app.py --corpus ./sample-corpus --query-id query_01 \
+# 7. Index, then ask
+# In another terminal set the env varaibles first
+export MC3_MODEL_DIR=$PWD/models/vlm MC3_INDEX_DIR=$PWD/work/index \
+       MC2_OUTPUT_DIR=$PWD/work/output MC3_SOCK=/tmp/mc3_rag.sock
+# Index the current corpus
+s=$(date +%s); python app/app.py --index ./mc3-corpus; echo "took $(( $(date +%s) - s ))s"
+# Then ask question to the server
+python app/app.py --corpus ./mc3-corpus --query-id query_01 \
      --query "What is the maximum junction temperature of the TQ-40?"
+echo "took $(( $(date +%s) - s ))s";
+
 cat work/output/query_01_output.json
 
-# 7. Watch VRAM in a second terminal (must stay between 1 and 48 GiB)
+# 8. Watch VRAM in a second terminal (must stay between 1 and 48 GiB)
 watch -n1 'amd-smi metric --mem | grep USED_VRAM'
+
+# 9. Test the ten questions against runing server
+python tests/ask_sample.py --corpus ./mc3-corpus
+# 10. Shutdown the server
+pkill -f "[s]erver.py"
 ```
 
 ### 7.2 As the Docker submission

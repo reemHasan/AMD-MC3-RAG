@@ -6,7 +6,6 @@ import importlib
 import logging
 import os
 
-# It gets or creates a logger named mc3.llm
 log = logging.getLogger("mc3.llm")
 
 MODEL_DIR = os.environ.get("MC3_MODEL_DIR", "/models/vlm")
@@ -14,6 +13,11 @@ MODEL_DIR = os.environ.get("MC3_MODEL_DIR", "/models/vlm")
 
 class HFModel:
     def __init__(self, model_dir: str = MODEL_DIR):
+        # transformers treats a missing local path as a Hub repo id and fails with a cryptic message
+        if not os.path.isfile(os.path.join(model_dir, "config.json")):
+            raise FileNotFoundError(
+                f"no model found in {model_dir!r} (no config.json). Set MC3_MODEL_DIR to the folder "
+                f"holding the downloaded weights, e.g.  export MC3_MODEL_DIR=$PWD/models/vlm")
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
