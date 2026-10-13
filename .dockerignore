@@ -1,0 +1,5 @@
+work/
+mc3-corpus/
+tests/
+*.zip
+.git

@@ -15,6 +15,8 @@ class MockLLM:
             text, key, val = VISION[name]
             if prompt.startswith("Transcribe"): return text
             q = prompt.split("Question:")[1]
+            if os.environ.get("MOCK_MISLED") and name == "backplane_pinout.png" and "error code" in q.lower():
+                return text + "\nANSWER: THERM_ALERT#"                    # a VLM that answers anything thermal
             return text + (f"\nANSWER: {val}" if key.lower() in q.lower() else "\nANSWER: NONE")
         if prompt.startswith("Question:"): return ""            # keyword expansion
         q = re.search(r"QUESTION: (.*)", prompt).group(1)
@@ -34,6 +36,9 @@ class MockLLM:
         if "customer sampling" in ql: return ans(find(r"TQ-60 \| Customer sampling \| (Q\d FY\d+)"))
         if "fan assembly" in ql: return ans(find(r"(?i)part number: (ORR-FAN-\d+-\w)[^\n]*TQ-40"))
         if "ticket orr-1847" in ql: return ans(find(r"ORR-1847[^\n]*fixed_in: (\S+)"))
+        if "error code" in ql and os.environ.get("MOCK_MISLED"):          # real failure: grabs the vision ANSWER line
+            hit = find(r"Vision model reading[^\n]*\n(?:[^\n]*\n)*?ANSWER: (\S+)")
+            if hit: return ans(hit)
         if "error code" in ql: return ans(find(r"(E\d{4}) THERMAL"))
         if "batch timeout" in ql: return ans(find(r"BATCH_TIMEOUT_S = (\d+)"))
         if "therm_alert" in ql or "board revision" in ql: return ans(find(r"ANSWER: (\S+)"))
@@ -44,6 +49,8 @@ class MockLLM:
                 return ans(hit, [log[0]] if (log and not os.environ.get('MOCK_FORGET')) else [])          # a sloppy model may forget this
             log = find(r"known issue (ORR-\d+)")
             if log: return json.dumps({"status": "search", "search": log[1], "sources": [log[0]]})
+        if "unit price" in ql and os.environ.get("MOCK_WRONGNUM"):      # real failure: a number that IS in a file, for another attribute
+            return ans(find(r"Lead time \(weeks\): (\d+)"))
         if "unit price" in ql and os.environ.get("MOCK_HALLUCINATE"):
             return json.dumps({"status": "answer", "answer": "6412", "sources": [1]})
         return json.dumps({"status": "none", "sources": []})

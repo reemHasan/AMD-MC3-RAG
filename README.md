@@ -284,6 +284,10 @@ tests/
 | `MC3_SERVER_LOG` | `/tmp/mc3_server.log` | Log file for a server started by the client fallback |
 | `MC3_IMAGE_CUTOFF_S` | `420` | Seconds after server start when image transcription at index time stops |
 | `MC3_CORPUS` | `/app/corpus` | Default corpus root for the server |
+| `MC3_DEBUG` | unset | If set, the server log also contains every full prompt sent to the model |
+| `MC3_BRIDGE` | `1` | Set to `0` to disable the automatic "bridge file" citation (multi-hop safety net) |
+| `MC3_VISION_GATE` | `1` | Set to `0` to read every image in context against the question (default: only images sharing 2+ words with it) |
+| `MC3_CONTEXT_CHARS` | `30000` | Excerpt budget. If the whole corpus fits, ALL chunks are shown to the model; lower it to force retrieval mode |
 | `MC3_LLM_FACTORY` | unset | `module:Class`, swaps in a stand-in model (tests only) |
 | `MC3_ALLOW_SHUTDOWN` | unset | Enables a `shutdown` socket op (tests only) |
 
@@ -308,7 +312,7 @@ pip install --no-deps -U transformers tokenizers safetensors huggingface_hub
 python -c "import torch; print(torch.__version__)"      # must still contain 'rocm'
 
 # 3. Download the weights first (~16 GB). Do NOT have HF_HUB_OFFLINE=1 set yet.
-#(newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
+#    (newer huggingface_hub ships `hf download ...`; `huggingface-cli` no longer exists)
 python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 
 # 4. Point the project at local paths

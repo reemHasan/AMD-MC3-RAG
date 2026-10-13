@@ -18,9 +18,9 @@ def main(root):
         (r / d).mkdir(parents=True, exist_ok=True)
     # --- pdf: current + withdrawn revision
     pdf(r/"specs/tq40_datasheet_r2.pdf", ["Orrery TQ-40 Datasheet, Revision 2", "This revision supersedes the withdrawn r1 datasheet.",
-        "Electrical characteristics", "Maximum junction temperature (Tj max): 94 C", "Minimum junction temperature: -20 C", "Supply voltage: 12 V"])
+        "Electrical characteristics", "Thermal throttle engages above Tj max.", "Maximum junction temperature (Tj max): 94 C", "Minimum junction temperature: -20 C", "Supply voltage: 12 V"])
     pdf(r/"specs/tq40_datasheet_r1_WITHDRAWN.pdf", ["WITHDRAWN - superseded by revision 2", "Orrery TQ-40 Datasheet, Revision 1",
-        "Maximum junction temperature (Tj max): 105 C", "Supply voltage: 12 V"])
+        "Thermal throttle engages above Tj max.", "Maximum junction temperature (Tj max): 105 C", "Supply voltage: 12 V"])
     # --- docx with a table
     d = docx.Document(); d.add_heading("FY27 Roadmap", 1); d.add_paragraph("Planning document. Dates are targets.")
     t = d.add_table(rows=1, cols=3); t.rows[0].cells[0].text, t.rows[0].cells[1].text, t.rows[0].cells[2].text = "Product", "Milestone", "Quarter"
@@ -43,7 +43,7 @@ def main(root):
     rows[48] = "ORR-1847,Cooling loop regulation regression at sustained load,closed,4.3.2"
     (r/"support/bug_database.csv").write_text("\n".join(rows) + "\n")
     # --- text + log + python
-    (r/"engineering/meridian_release_notes.txt").write_text("Meridian firmware release notes\n4.3.1: fan curve tuning. Fixes ORR-1790.\n4.3.2: stability release.\n")
+    (r/"engineering/meridian_release_notes.txt").write_text("Meridian firmware release notes\n4.3.1: fan curve tuning. Fixes ORR-1790.\n4.3.2: stability release, thermal throttle tuning. Related to ORR-1847.\n")
     (r/"logs/prod_inference_2026-09-02.log").write_text(
         "2026-09-02T10:00:01 INFO inference started batch=44\n2026-09-02T10:14:22 WARN E7731 THERMAL_THROTTLE engaged on node 7\n"
         "2026-09-02T10:14:22 WARN known issue ORR-1847 (see tracker)\n2026-09-02T10:20:00 INFO recovered\n")

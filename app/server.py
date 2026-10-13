@@ -30,7 +30,8 @@ INDEX_DIR = Path(os.environ.get("MC3_INDEX_DIR", "/app/index"))
 T0 = time.time()
 # The startup budget (10 min) covers model load AND indexing. Stop transcribing images
 # at index time after this many seconds since process start; they are still read directly
-# at query time.
+# at query time. (A late --index, e.g. a manual test long after startup, still gets 180 s
+# of transcription; in the real harness --index arrives right after startup, so T0 governs.)
 IMAGE_CUTOFF_S = float(os.environ.get("MC3_IMAGE_CUTOFF_S", "420"))
 
 log = logging.getLogger("mc3.server")
@@ -79,7 +80,7 @@ def serve() -> int:
     from indexer import build_index
     from llm import make_llm
     from retrieval import Index
-# 1. Load model into VRAM
+
     llm = None
     try:
         llm = make_llm()
@@ -104,14 +105,13 @@ def serve() -> int:
                 conn.sendall(b'{"ok": true}\n'); conn.close(); os._exit(0)
             elif op == "index":
                 t = time.time()
-                index = build_index(Path(req["corpus"]), llm, image_deadline=T0 + IMAGE_CUTOFF_S)
+                index = build_index(Path(req["corpus"]), llm, image_deadline=max(T0 + IMAGE_CUTOFF_S, time.time() + 180))
                 index.save(INDEX_DIR)
                 tried_index = True
                 files = len({c["file"] for c in index.chunks})
                 log.info("index built in %.1fs: %d chunks, %d files, skipped %s",
                          time.time() - t, len(index.chunks), files, index.skipped)
                 rep = {"ok": True, "chunks": len(index.chunks), "files": files, "skipped": len(index.skipped)}
-                # rep never returned
             elif op == "query":
                 if not tried_index and Path(req.get("corpus", "")).is_dir():
                     log.warning("query before --index: indexing lazily")
@@ -119,6 +119,8 @@ def serve() -> int:
                     index.save(INDEX_DIR)
                     tried_index = True
                 if index.root is None or str(index.root) != req.get("corpus", str(index.root)):
+                    # the index was built for a corpus mounted at the same place; trust it, but
+                    # make image lookups follow the corpus the client names
                     if req.get("corpus"):
                         index.root = Path(req["corpus"])
                 if llm is None:
@@ -141,3 +143,4 @@ def serve() -> int:
 
 if __name__ == "__main__":
     sys.exit(serve())
+
