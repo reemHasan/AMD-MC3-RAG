@@ -25,7 +25,10 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# project layout: <root>/app/app.py ; inside the Docker image: /app/app.py with this script in /app/tests/
 APP = HERE.parent / "app" / "app.py"
+if not APP.exists():
+    APP = HERE.parent / "app.py"
 POINTS = 20
 
 

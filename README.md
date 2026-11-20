@@ -354,13 +354,13 @@ pkill -f "[s]erver.py"
 python -c "from huggingface_hub import snapshot_download as d; d('Qwen/Qwen2.5-VL-7B-Instruct', local_dir='models/vlm')"
 docker build -t mc3:v1 .
 docker run --rm mc3:v1 python3 -c "import torch; print(torch.__version__)"   # +rocm
-python3 selfcheck.py mc3:v1 ./sample-corpus
+python3 selfcheck.py mc3:v1 ./mc3-corpus
 
 # hostile-file check: no network, root without DAC_OVERRIDE, like the evaluation
 docker run -d --network none --cap-drop DAC_OVERRIDE \
        --device /dev/kfd --device /dev/dri --name t mc3:v1
-docker cp ./sample-corpus/. t:/app/corpus
-docker exec t python3 /app/app.py --index /app/corpus
+docker cp ./mc3-corpus/. t:/app/corpus
+docker exec t python3 /app/app.py --index /app/corpus 
 ```
 
 Ship the weights **inside** the image. Your MC-3 documents say the container has no
